@@ -4,8 +4,6 @@ pipeline {
     environment {
         DOCKER_IMAGE = "aisalkyn85/manual-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        KUBE_DEPLOYMENT = "manual-app"
-        KUBE_CONTAINER = "manual-app"
     }
 
     stages {
@@ -55,33 +53,14 @@ pipeline {
                 """
             }
         }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                echo "Updating Kubernetes deployment..."
-                sh """
-                kubectl set image deployment/${KUBE_DEPLOYMENT} \
-                ${KUBE_CONTAINER}=${DOCKER_IMAGE}:${IMAGE_TAG} --record
-                """
-            }
-        }
-
-        stage('Verify Rollout') {
-            steps {
-                echo "Checking rollout status..."
-                sh """
-                kubectl rollout status deployment/${KUBE_DEPLOYMENT}
-                """
-            }
-        }
     }
 
     post {
         success {
-            echo "Deployment successful!"
+            echo "CI Pipeline completed successfully!"
         }
         failure {
-            echo "Pipeline failed!"
+            echo "CI Pipeline failed!"
         }
         always {
             echo "Pipeline finished."
