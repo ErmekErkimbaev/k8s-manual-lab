@@ -5,7 +5,8 @@ pipeline {
 
   environment {
     DOCKER_IMAGE = "aisalkyn85/manual-app"
-    IMAGE_TAG = "${BUILD_NUMBER}"
+    BUILD_TAG    = "build-${BUILD_NUMBER}"
+    COMMIT_SHA   = ""   // заполним после checkout
   }
 
   stages {
@@ -13,31 +14,29 @@ pipeline {
       steps {
         echo "Cloning repository..."
         checkout scm
+        script {
+          COMMIT_SHA = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          env.COMMIT_SHA = COMMIT_SHA
+        }
       }
     }
 
-    // 👇 ВОТ ЭТОТ STAGE ВСТАВЛЯЕМ МЕЖДУ Checkout и Install Dependencies
-    stage('Debug Environment') {
+    stage('Verify Docker') {
       steps {
         sh '''
-          echo "=== DEBUG ENV ==="
-          whoami
-          uname -a
+          echo "User: $(whoami)"
           echo "PATH=$PATH"
-          which docker || true
-          ls -l /usr/bin/docker /usr/local/bin/docker 2>/dev/null || true
-          docker --version || true
+          command -v docker
+          docker --version
           ls -l /var/run/docker.sock || true
-          echo "=== END DEBUG ==="
         '''
       }
     }
 
     stage('Install Dependencies') {
       steps {
-        echo "Installing npm dependencies (via Docker)..."
+        echo "Installing npm dependencies (via Docker node:20)..."
         sh '''
-          docker --version
           docker run --rm -v "$PWD":/app -w /app node:20 npm ci
         '''
       }
@@ -46,33 +45,10 @@ pipeline {
     stage('Build Docker Image') {
       steps {
         echo "Building Docker image..."
-        sh 'docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .'
-      }
-    }
+        sh '''
+          docker build -t ${DOCKER_IMAGE}:${BUILD_TAG} .
 
-    stage('Login to DockerHub') {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-creds',
-          usernameVariable: 'DOCKER_USER',
-          passwordVariable: 'DOCKER_PASS'
-        )]) {
-          sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-        }
-      }
-    }
 
-    stage('Push Image') {
-      steps {
-        echo "Pushing image to DockerHub..."
-        sh 'docker push ${DOCKER_IMAGE}:${IMAGE_TAG}'
-      }
-    }
-  }
+exit
+echo "Dockerfile.jenkins" >> .gitignore
 
-  post {
-    success { echo "CI Pipeline completed successfully!" }
-    failure { echo "CI Pipeline failed!" }
-    always  { echo "Pipeline finished." }
-  }
-}
