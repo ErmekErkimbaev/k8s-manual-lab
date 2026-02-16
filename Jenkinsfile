@@ -4,7 +4,7 @@ pipeline {
   options { skipDefaultCheckout(true) }
 
   environment {
-    DOCKER_IMAGE = "ermekerkimbaev/manual-app"
+    DOCKER_IMAGE = "ermek1988/manual-app"
     BUILD_TAG    = "build-${BUILD_NUMBER}"
     COMMIT_SHA   = ""   // заполним после checkout
   }
@@ -51,4 +51,3 @@ pipeline {
 
 exit
 echo "Dockerfile.jenkins" >> .gitignore
-
