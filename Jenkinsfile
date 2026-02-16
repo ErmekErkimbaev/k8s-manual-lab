@@ -1,53 +1,69 @@
 pipeline {
-  agent any
+    agent any
 
-  options { skipDefaultCheckout(true) }
+    environment {
+        DOCKER_IMAGE = "aisalkyn85/manual-app"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
 
-  environment {
-    DOCKER_IMAGE = "ermek1988/manual-app"
-    BUILD_TAG    = "build-${BUILD_NUMBER}"
-    COMMIT_SHA   = ""   // заполним после checkout
-  }
+    stages {
 
-  stages {
-    stage('Checkout') {
-      steps {
-        echo "Cloning repository..."
-        checkout scm
-        script {
-          COMMIT_SHA = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-          env.COMMIT_SHA = COMMIT_SHA
+        stage('Checkout') {
+            steps {
+                echo "Cloning repository..."
+                checkout scm
+            }
         }
-      }
+
+        stage('Install Dependencies') {
+            steps {
+                echo "Installing npm dependencies..."
+                sh 'npm install'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image..."
+                sh """
+                docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+                """
+            }
+        }
+
+        stage('Login to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    """
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                echo "Pushing image to DockerHub..."
+                sh """
+                docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                """
+            }
+        }
     }
 
-    stage('Verify Docker') {
-      steps {
-        sh '''
-          echo "User: $(whoami)"
-          echo "PATH=$PATH"
-          command -v docker
-          docker --version
-          ls -l /var/run/docker.sock || true
-        '''
-      }
+    post {
+        success {
+            echo "CI Pipeline completed successfully!"
+        }
+        failure {
+            echo "CI Pipeline failed!"
+        }
+        always {
+            echo "Pipeline finished."
+        }
     }
-
-    stage('Install Dependencies') {
-      steps {
-        echo "Installing npm dependencies (via Docker node:20)..."
-        sh '''
-          docker run --rm -v "$PWD":/app -w /app node:20 npm ci
-        '''
-      }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        echo "Building Docker image..."
-        sh '''
-          docker build -t ${DOCKER_IMAGE}:${BUILD_TAG} .
-
-
-exit
-echo "Dockerfile.jenkins" >> .gitignore
+}
