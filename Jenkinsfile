@@ -10,24 +10,24 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo "Cloning repository..."
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
+            agent {
+                docker {
+                    image 'node:18'
+                }
+            }
             steps {
-                echo "Installing npm dependencies..."
                 sh 'npm install'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
-                sh """
-                docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
-                """
+                sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
             }
         }
 
@@ -38,32 +38,17 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh """
-                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                    """
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    '''
                 }
             }
         }
 
         stage('Push Image') {
             steps {
-                echo "Pushing image to DockerHub..."
-                sh """
-                docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
-                """
+                sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
             }
-        }
-    }
-
-    post {
-        success {
-            echo "CI Pipeline completed successfully!"
-        }
-        failure {
-            echo "CI Pipeline failed!"
-        }
-        always {
-            echo "Pipeline finished."
         }
     }
 }
