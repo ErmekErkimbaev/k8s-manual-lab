@@ -4,7 +4,7 @@ pipeline {
   options { skipDefaultCheckout(true) }
 
   environment {
-    DOCKER_IMAGE = "aisalkyn85/manual-app"
+    DOCKER_IMAGE = "ermekerkimbaev/manual-app"
     BUILD_TAG    = "build-${BUILD_NUMBER}"
     COMMIT_SHA   = ""   // заполним после checkout
   }
