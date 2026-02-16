@@ -16,12 +16,29 @@ pipeline {
       }
     }
 
+    // 👇 ВОТ ЭТОТ STAGE ВСТАВЛЯЕМ МЕЖДУ Checkout и Install Dependencies
+    stage('Debug Environment') {
+      steps {
+        sh '''
+          echo "=== DEBUG ENV ==="
+          whoami
+          uname -a
+          echo "PATH=$PATH"
+          which docker || true
+          ls -l /usr/bin/docker /usr/local/bin/docker 2>/dev/null || true
+          docker --version || true
+          ls -l /var/run/docker.sock || true
+          echo "=== END DEBUG ==="
+        '''
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         echo "Installing npm dependencies (via Docker)..."
         sh '''
           docker --version
-          docker run --rm -v "$PWD":/app -w /app node:20 npm install
+          docker run --rm -v "$PWD":/app -w /app node:20 npm ci
         '''
       }
     }
