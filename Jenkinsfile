@@ -15,13 +15,14 @@ pipeline {
         }
 
         stage('Install Dependencies') {
-            agent {
-                docker {
-                    image 'node:18'
-                }
-            }
             steps {
-                sh 'npm install'
+                sh '''
+                  docker run --rm \
+                    -v "$PWD":/app \
+                    -w /app \
+                    node:18 \
+                    npm install
+                '''
             }
         }
 
@@ -38,9 +39,7 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh '''
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    '''
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                 }
             }
         }
@@ -52,3 +51,4 @@ pipeline {
         }
     }
 }
+
